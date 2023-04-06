@@ -1,6 +1,9 @@
 import { DataSource } from 'typeorm';
 import path from 'path'
 import multer from 'multer';
+import { createClient } from 'redis';
+
+
 
 
 
@@ -15,7 +18,7 @@ const storage = multer.diskStorage({
 })
 
 
-
+export const client = createClient()
 export const upload = multer({storage: storage})
 
 const x = path.join( __dirname, 'entity', '*.{js,ts}' )

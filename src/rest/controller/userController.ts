@@ -4,13 +4,20 @@ import { SchemaNewUser } from '../../component/user';
 import { ZodError } from 'zod';
 import { positionRepository } from '../../repository/positionRepository';
 import tinify from 'tinify';
-import path from 'path';
+import { client } from '../../data_source';
+import { v4 } from 'uuid'
 
 tinify.key = process.env.TINY_KEY;
 
 export class UserController {
   async getToken(req: Request, res: Response) {
     try {
+      const token = v4()
+      await client.set(token, token, {EX: 40*60})
+      return res.json({
+        success: true,
+        token: token
+    })
     } catch (e) {
       return res.status(500).json({ message: 'Server failed' });
     }
@@ -18,6 +25,7 @@ export class UserController {
 
   async getUsers(req: Request, res: Response) {
     try {
+      console.log(req.user)
       const userId = req.params.id;
       if (userId) {
         if (+userId % 1) {
@@ -136,6 +144,22 @@ export class UserController {
       const emailRegexp =
         /^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])$/;
       const phoneRegexp = /^[\+]{0,1}380([0-9]{9})$/;
+      const token = req.headers.token
+      
+      if(!token){
+        return res.status(404).json({
+          success: false,
+          message: "You must have token"
+      })
+      }
+      const checkToken = await client.get(token.toString())
+      
+      if(!checkToken){
+        return res.status(401).json({
+          success: false,
+          message: "The token expired."
+      })
+      }
 
       const fetchedUser = SchemaNewUser.parse(req.body);
       const { name, email, phone, position_id } = fetchedUser;
@@ -209,7 +233,7 @@ export class UserController {
         position: position,
         photo: pathImage + '_optimize.jpg',
       });
-
+      await client.del(token)
       return res.json({
         success: true,
         user_id: userSaved.id,
@@ -236,6 +260,7 @@ export class UserController {
 
   async getPositions(req: Request, res: Response) {
     try {
+      
       const positions = await positionRepository.find();
       const response = {
         success: true,
