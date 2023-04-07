@@ -1,27 +1,21 @@
 import { DataSource } from 'typeorm';
-import path from 'path'
+import path from 'path';
 import multer from 'multer';
 import { createClient } from 'redis';
 
-
-
-
-
 const storage = multer.diskStorage({
-    destination: (req, file, cb)=>{
-        cb(null, path.join(__dirname, 'upload'))
-    },
-    filename:(req, file, cb)=>{
-       
-        cb(null, file.originalname)
-    }
-})
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, 'upload'));
+  },
+  filename: (req, file, cb) => {
+    cb(null, file.originalname);
+  },
+});
 
+export const client = createClient();
+export const upload = multer({ storage: storage }); //limits: {fileSize: 5e6 }
 
-export const client = createClient()
-export const upload = multer({storage: storage})
-
-const x = path.join( __dirname, 'entity', '*.{js,ts}' )
+const x = path.join(__dirname, 'entity', '*.{js,ts}');
 
 const DB_TYPE: any = process.env.DB_TYPE || 'mysql';
 

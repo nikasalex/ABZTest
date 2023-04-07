@@ -1,26 +1,32 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from "typeorm"; 
-import { Position } from "./position";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+} from 'typeorm';
+import { Position } from './position';
 
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({nullable : false})
+  @Column({ nullable: false })
   name: string;
 
-  @Column({nullable : false})
+  @Column({ nullable: false })
   email: string;
 
-  @Column({nullable : false})
+  @Column({ nullable: false })
   phone: string;
 
-  @CreateDateColumn({nullable : false})
+  @CreateDateColumn({ nullable: false })
   registration_timestamp: Date;
 
-  @Column({nullable : false})
+  @Column({ nullable: false })
   photo: string;
 
-  @ManyToOne(()=> Position, (position)=> position.user )
-  position: Position
+  @ManyToOne(() => Position, (position) => position.user)
+  position: Position;
 }

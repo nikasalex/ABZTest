@@ -5,19 +5,20 @@ import { ZodError } from 'zod';
 import { positionRepository } from '../../repository/positionRepository';
 import tinify from 'tinify';
 import { client } from '../../data_source';
-import { v4 } from 'uuid'
+import { v4 } from 'uuid';
+import { off } from 'process';
 
 tinify.key = process.env.TINY_KEY;
 
 export class UserController {
   async getToken(req: Request, res: Response) {
     try {
-      const token = v4()
-      await client.set(token, token, {EX: 40*60})
+      const token = v4();
+      await client.set(token, token, { EX: 40 * 60 });
       return res.json({
         success: true,
-        token: token
-    })
+        token: token,
+      });
     } catch (e) {
       return res.status(500).json({ message: 'Server failed' });
     }
@@ -25,7 +26,6 @@ export class UserController {
 
   async getUsers(req: Request, res: Response) {
     try {
-      console.log(req.user)
       const userId = req.params.id;
       if (userId) {
         if (+userId % 1) {
@@ -47,7 +47,6 @@ export class UserController {
             },
           });
         }
-        console.log(user);
         const response = {
           success: true,
           user: {
@@ -94,8 +93,11 @@ export class UserController {
             },
           });
       }
+      let skip = page * count - count;
+      if (offset !== 0) {
+        skip = offset;
+      }
 
-      const skip = page * count - count;
       const recievedUsers = await userRepository.getUser(skip, count);
       const users = [];
       for (let elem of recievedUsers) {
@@ -144,21 +146,21 @@ export class UserController {
       const emailRegexp =
         /^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])$/;
       const phoneRegexp = /^[\+]{0,1}380([0-9]{9})$/;
-      const token = req.headers.token
-      
-      if(!token){
+      const token = req.headers.token;
+
+      if (!token) {
         return res.status(404).json({
           success: false,
-          message: "You must have token"
-      })
+          message: 'You must have token',
+        });
       }
-      const checkToken = await client.get(token.toString())
-      
-      if(!checkToken){
+      const checkToken = await client.get(token.toString());
+
+      if (!checkToken) {
         return res.status(401).json({
           success: false,
-          message: "The token expired."
-      })
+          message: 'The token expired.',
+        });
       }
 
       const fetchedUser = SchemaNewUser.parse(req.body);
@@ -174,7 +176,7 @@ export class UserController {
               position_id: ['The position id must be positive and an integer.'],
             },
           });
-        case req.file.size > 5e6:
+        case req.file?.size > 5e6:
           return res.status(422).json({
             success: false,
             message: 'Validation failed',
@@ -217,7 +219,7 @@ export class UserController {
       if (!position) {
         return res.status(404).json({ message: 'Position not found' });
       }
-
+      console.log(req.file);
       const pathImage = req.file.path;
       let source = tinify.fromFile(pathImage).resize({
         method: 'cover',
@@ -233,7 +235,7 @@ export class UserController {
         position: position,
         photo: pathImage + '_optimize.jpg',
       });
-      await client.del(token)
+      await client.del(token);
       return res.json({
         success: true,
         user_id: userSaved.id,
@@ -245,9 +247,13 @@ export class UserController {
           return res.status(422).json({
             success: false,
             message: 'Validation failed',
-            fails: {
-              name: [e.issues[0].message],
-            },
+            fails: e.issues.reduce((acc, elem: any) => {
+              const key = elem.path[0];
+              const value = elem.message;
+              acc[key] = [value];
+
+              return { ...acc };
+            }, {}),
           });
         }
         console.log(e.message);
@@ -260,7 +266,6 @@ export class UserController {
 
   async getPositions(req: Request, res: Response) {
     try {
-      
       const positions = await positionRepository.find();
       const response = {
         success: true,

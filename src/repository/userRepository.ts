@@ -24,6 +24,9 @@ export const userRepository = AppDataSource.getRepository(User).extend({
       relations: {
         position: true,
       },
+      order: {
+        registration_timestamp: 'DESC',
+      },
       skip,
       take,
     });
