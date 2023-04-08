@@ -8,6 +8,7 @@ import http from 'http';
 import cors from 'cors';
 import { router } from './rest/routes/users';
 import { client } from './data_source';
+import path from 'path'
 
 const PORT = process.env.PORT ?? 3000;
 
@@ -18,6 +19,7 @@ app.use(cors({ origin: `http://localhost:3000` }));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(express.static(path.join(__dirname, 'upload')))
 app.use(router);
 
 client.on('error', (err) => console.log('Redis client Error', err));

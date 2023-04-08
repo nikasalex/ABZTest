@@ -19,7 +19,7 @@ export const userRepository = AppDataSource.getRepository(User).extend({
     return this.findOneBy({ phone });
   },
 
-  getUser(skip: number, take: number) {
+  listUsers(skip: number, take: number) {
     return this.find({
       relations: {
         position: true,

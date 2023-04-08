@@ -1,12 +1,14 @@
 import { NextFunction, Request, Response } from 'express';
 import { userRepository } from '../../repository/userRepository';
-import { SchemaNewUser } from '../../component/user';
+import { SchemaNewUser } from '../../schema/user';
 import { ZodError } from 'zod';
 import { positionRepository } from '../../repository/positionRepository';
 import tinify from 'tinify';
 import { client } from '../../data_source';
 import { v4 } from 'uuid';
-import { off } from 'process';
+import path from 'path';
+import fs from 'fs'
+import { createUser } from '../../scripts/userGenerator';
 
 tinify.key = process.env.TINY_KEY;
 
@@ -23,8 +25,7 @@ export class UserController {
       return res.status(500).json({ message: 'Server failed' });
     }
   }
-
-  async getUsers(req: Request, res: Response) {
+  async getUser(req: Request, res: Response) {
     try {
       const userId = req.params.id;
       if (userId) {
@@ -62,7 +63,14 @@ export class UserController {
         };
         return res.send(response);
       }
+    } catch (e) {
+      console.log(e);
+      return res.status(500).json({ message: 'Server failed' });
+    }
+  }
 
+  async listUsers(req: Request, res: Response) {
+    try {
       const page: number = +req.query.page || 1;
       const offset: number = +req.query.offset || 0;
       const count: number = +req.query.count || 5;
@@ -97,8 +105,22 @@ export class UserController {
       if (offset !== 0) {
         skip = offset;
       }
-
-      const recievedUsers = await userRepository.getUser(skip, count);
+      const total_users = await userRepository.count();
+      console.log(total_users) // delete
+      if (skip > total_users) {
+        return res.status(404).json({
+          success: false,
+          message: 'Page not found',
+        });
+      }
+      // users generator
+      if(total_users < 45){
+        for(let i = 0; i < 45; i++){
+         await createUser()
+        }
+      }
+      // end 
+      const recievedUsers = await userRepository.listUsers(skip, count);
       const users = [];
       for (let elem of recievedUsers) {
         users.push({
@@ -109,18 +131,7 @@ export class UserController {
           position: elem.position.name,
           position_id: elem.position.id,
           registration_timestamp: elem.registration_timestamp,
-          photo: elem.photo,
-        });
-      }
-      const allUsers = await userRepository.find();
-      const total_users = allUsers.reduce((acc, elem) => {
-        acc++;
-        return acc;
-      }, 0);
-      if (!users.length) {
-        return res.status(404).json({
-          success: false,
-          message: 'Page not found',
+          photo: `http://localhost:3001/images/users/${elem.photo}`,
         });
       }
 
@@ -219,22 +230,35 @@ export class UserController {
       if (!position) {
         return res.status(404).json({ message: 'Position not found' });
       }
-      console.log(req.file);
+      const avatarName = `${v4()}.jpg`;
+      const avatarPath = path.join(
+        __dirname,
+        '../../',
+        'upload',
+        'images',
+        'users'
+      );
       const pathImage = req.file.path;
       let source = tinify.fromFile(pathImage).resize({
         method: 'cover',
         width: 70,
         height: 70,
       });
-      source.toFile(pathImage + '_optimize.jpg');
+      source.toFile(path.join(avatarPath, avatarName));
 
       const userSaved = await userRepository.save({
         name,
         email,
         phone,
         position: position,
-        photo: pathImage + '_optimize.jpg',
+        photo: avatarName,
       });
+      fs.unlink(pathImage, (err)=>{
+        if (err) {
+          console.log(err);
+      }
+      })
+
       await client.del(token);
       return res.json({
         success: true,
