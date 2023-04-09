@@ -13,7 +13,7 @@ const storage = multer.diskStorage({
 });
 
 export const client = createClient();
-export const upload = multer({ storage: storage }); //limits: {fileSize: 5e6 }
+export const upload = multer({ storage: storage });
 
 const x = path.join(__dirname, 'entity', '*.{js,ts}');
 
